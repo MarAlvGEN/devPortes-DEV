@@ -34,7 +34,7 @@
     <!-- BARRA DE NAVEGACIÓN -->
     <app-navbar></app-navbar>
 
-    <main>
+    <main class="min-vh90">
       <section class="galeria">
         <h1 class="brand-heading">GALERÍA</h1>
         <p class="descripcion">Conoce nuestros espacios deportivos y revive los mejores momentos y torneos.</p>
@@ -72,9 +72,7 @@
           <div class="error-icon"><i class="bi bi-exclamation-triangle-fill"></i></div>
           <h4>No se pudieron cargar las publicaciones</h4>
           <p id="errorMensajeTexto">Ocurrió un inconveniente al conectar con el servidor.</p>
-          <button id="btnReintentar" class="btn-reintentar">
-            <i class="bi bi-arrow-clockwise"></i> Reintentar
-          </button>
+          <button id="btnReintentar" class="btn-reintentar"><i class="bi bi-arrow-clockwise"></i> Reintentar</button>
         </div>
 
         <!-- ESTADO: VACÍO -->
@@ -89,11 +87,9 @@
           <!-- JS inyectará las tarjetas de fotos aquí -->
         </div>
       </section>
-
-      <!-- PIE DE PÁGINA -->
-      <app-footer></app-footer>
     </main>
 
+    <app-footer></app-footer>
     <!-- MODAL DE VISUALIZACIÓN DETALLADA (LIGHTBOX) -->
     <div class="modal fade" id="modalVerPost" tabindex="-1" aria-labelledby="modalVerPostLabel" aria-hidden="true">
       <div class="modal-dialog modal-dialog-centered">
@@ -106,11 +102,21 @@
             <div id="carouselVerPost" class="carousel slide lightbox-carousel">
               <div class="carousel-indicators" id="verPostCarouselIndicators"></div>
               <div class="carousel-inner" id="verPostCarouselInner"></div>
-              <button class="carousel-control-prev" type="button" data-bs-target="#carouselVerPost" data-bs-slide="prev" id="verPostCarouselPrev">
+              <button
+                class="carousel-control-prev"
+                type="button"
+                data-bs-target="#carouselVerPost"
+                data-bs-slide="prev"
+                id="verPostCarouselPrev">
                 <span class="carousel-control-prev-icon" aria-hidden="true"></span>
                 <span class="visually-hidden">Anterior</span>
               </button>
-              <button class="carousel-control-next" type="button" data-bs-target="#carouselVerPost" data-bs-slide="next" id="verPostCarouselNext">
+              <button
+                class="carousel-control-next"
+                type="button"
+                data-bs-target="#carouselVerPost"
+                data-bs-slide="next"
+                id="verPostCarouselNext">
                 <span class="carousel-control-next-icon" aria-hidden="true"></span>
                 <span class="visually-hidden">Siguiente</span>
               </button>

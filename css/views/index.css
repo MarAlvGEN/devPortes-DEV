@@ -163,6 +163,53 @@
 }
 
 /* ==========================================================================
+   FILTRO DE DEPORTES
+   ========================================================================== */
+
+.filtro-deportes {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 2rem;
+}
+
+.filtro-deporte-btn {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  border: 2px solid var(--color-terceario);
+  background: #ffffff;
+  color: var(--color-terceario);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-align: center;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  line-height: 1.2;
+  transition:
+    background 0.25s ease,
+    color 0.25s ease,
+    transform 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+.filtro-deporte-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 16px rgba(34, 67, 48, 0.2);
+}
+
+.filtro-deporte-btn.active {
+  background: var(--color-primario);
+  color: #ffffff;
+  border-color: var(--color-primario);
+  box-shadow: 0 4px 12px rgba(64, 182, 34, 0.35);
+}
+
+/* ==========================================================================
    GALERÍA FLEXBOX
    ========================================================================== */
 
@@ -346,6 +393,12 @@
    ========================================================================== */
 
 @media (max-width: 1199.98px) {
+  .filtro-deporte-btn {
+    width: 70px;
+    height: 70px;
+    font-size: 0.65rem;
+  }
+
   .gallery-bento-item {
     flex: 0 0 calc(50% - 6px);
     height: 250px;
@@ -361,6 +414,26 @@
    ========================================================================== */
 
 @media (max-width: 767.98px) {
+  .filtro-deportes {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    justify-content: flex-start;
+    padding-bottom: 8px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .filtro-deportes::-webkit-scrollbar {
+    display: none;
+  }
+
+  .filtro-deporte-btn {
+    width: 64px;
+    height: 64px;
+    font-size: 0.6rem;
+    flex-shrink: 0;
+  }
+
   .gallery-bento-grid {
     gap: 10px;
   }
