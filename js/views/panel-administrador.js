@@ -1,48 +1,13 @@
 import { obtenerCanchas, crearCancha, editarCancha as editarCanchaApi, eliminarCancha as eliminarCanchaApi, formatoTipo, tipoAArray } from '../api/canchas.js';
 import { obtenerUbicaciones, crearUbicacion, editarUbicacion as editarUbicacionApi, toggleEstadoUbicacion } from '../api/locations.js';
+import { obtenerPosts, crearPost, editarPost, eliminarPost } from '../api/gallery.js';
+import { obtenerUsuarios } from '../api/auth.js';
 import { USE_MOCK } from '../utils/mockData.js';
 import { showToast } from '../componets/toast.js';
 
 const KEY_ADMIN_SESSION = 'devportes_admin_sesion';
 
-let listaClientes = [
-  {
-    id: 1,
-    iniciales: 'CB',
-    nombre: 'Carlos Bermeo',
-    reservas: 14,
-    email: 'carlos.bermeo@gmail.com',
-    telefono: '+57 300 123 4567',
-    tipo: 'Frecuente',
-  },
-  {
-    id: 2,
-    iniciales: 'AG',
-    nombre: 'Andres Gomez',
-    reservas: 8,
-    email: 'andres.gomez@hotmail.com',
-    telefono: '+57 310 987 6543',
-    tipo: 'Estandar',
-  },
-  {
-    id: 3,
-    iniciales: 'ML',
-    nombre: 'Mariana Lopez',
-    reservas: 22,
-    email: 'mariana.l@outlook.com',
-    telefono: '+57 320 456 7890',
-    tipo: 'VIP',
-  },
-  {
-    id: 4,
-    iniciales: 'JR',
-    nombre: 'Javier Rodriguez',
-    reservas: 5,
-    email: 'j.rodriguez@gmail.com',
-    telefono: '+57 315 555 1234',
-    tipo: 'Estandar',
-  },
-];
+let listaClientes = [];
 
 let ubicaciones = [];
 
@@ -120,6 +85,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   await renderCanchasGrid();
+  await renderGaleriaGrid();
   await renderSedesGrid();
   activarModalGeneral();
 });
@@ -202,34 +168,76 @@ function activarCerrarSesion() {
   }
 }
 
-function renderClientesGrid() {
+function inicialesDe(nombre) {
+  return nombre
+    .split(' ')
+    .map((p) => p[0])
+    .join('')
+    .substring(0, 2)
+    .toUpperCase();
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  const div = document.createElement('div');
+  div.appendChild(document.createTextNode(str));
+  return div.innerHTML;
+}
+
+function normalizarCliente(raw) {
+  return {
+    id: raw.id,
+    nombre: raw.name,
+    email: raw.email,
+    telefono: raw.phoneNumber,
+    tipo: raw.classification || raw.role,
+    state: raw.state,
+  };
+}
+
+async function renderClientesGrid() {
   const contenedor = document.getElementById('clientesGridPreview');
   if (!contenedor) return;
 
+  contenedor.innerHTML = '<p class="text-muted" style="padding: 1rem; text-align: center">Cargando clientes...</p>';
+
+  try {
+    const data = await obtenerUsuarios();
+    listaClientes = Array.isArray(data) ? data.map(normalizarCliente) : [];
+  } catch (err) {
+    listaClientes = [];
+    contenedor.innerHTML = '<p class="text-muted" style="padding: 1rem; text-align: center">Error al cargar clientes.</p>';
+    return;
+  }
+
   contenedor.innerHTML = '';
+
+  if (listaClientes.length === 0) {
+    contenedor.innerHTML = '<p class="text-muted" style="padding: 1rem; text-align: center">No hay clientes registrados.</p>';
+    return;
+  }
 
   listaClientes.forEach((cliente) => {
     const card = document.createElement('div');
     card.className = 'card user-card-full';
+    const iniciales = inicialesDe(cliente.nombre);
 
     card.innerHTML = `
       <div class="user-card-header">
-        <div class="avatar">${cliente.iniciales}</div>
+        <div class="avatar">${iniciales}</div>
         <div>
-          <h4 style="font-size: 1rem; font-weight: 700">${cliente.nombre}</h4>
-          <span class="badge-tag green">${cliente.tipo}</span>
+          <h4 style="font-size: 1rem; font-weight: 700">${escapeHtml(cliente.nombre)}</h4>
+          <span class="badge-tag green">${escapeHtml(cliente.tipo)}</span>
         </div>
       </div>
 
       <div class="user-card-body" style="margin: 12px 0">
-        <div class="card-info-row"><span class="text-muted">Email:</span> <strong>${cliente.email}</strong></div>
-        <div class="card-info-row"><span class="text-muted">Telefono:</span> <strong>${cliente.telefono}</strong></div>
-        <div class="card-info-row"><span class="text-muted">Reservas:</span> <strong>${cliente.reservas} realizadas</strong></div>
+        <div class="card-info-row"><span class="text-muted">Email:</span> <strong>${escapeHtml(cliente.email)}</strong></div>
+        <div class="card-info-row"><span class="text-muted">Telefono:</span> <strong>${escapeHtml(cliente.telefono || '-')}</strong></div>
       </div>
 
       <div class="user-card-actions">
         <button class="btn-action btn-detail" onclick="abrirPerfilCliente(${cliente.id})"><i data-lucide="eye"></i> Ver</button>
-        <button class="btn-action btn-delete" onclick="eliminarCliente(${cliente.id})"><i data-lucide="trash-2"></i> Eliminar</button>
       </div>
     `;
 
@@ -615,6 +623,372 @@ window.eliminarCanchaConfirmada = function (id) {
   });
 };
 
+// ==========================================
+// GALERÍA - CRUD DE PUBLICACIONES
+// ==========================================
+
+function formatearFechaAdmin(fechaStr) {
+  if (!fechaStr) return 'Sin fecha';
+  try {
+    const [anio, mes, dia] = fechaStr.split('-').map(Number);
+    if (!anio || !mes || !dia) return fechaStr;
+    const fecha = new Date(anio, mes - 1, dia);
+    return fecha.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+  } catch {
+    return fechaStr;
+  }
+}
+
+function formatearFechaLargaAdmin(fechaStr) {
+  if (!fechaStr) return 'Sin fecha';
+  try {
+    const [anio, mes, dia] = fechaStr.split('-').map(Number);
+    if (!anio || !mes || !dia) return fechaStr;
+    const fecha = new Date(anio, mes - 1, dia);
+    return fecha.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
+  } catch {
+    return fechaStr;
+  }
+}
+
+async function renderGaleriaGrid() {
+  const contenedor = document.getElementById('galeriaGridPreview');
+  if (!contenedor) return;
+
+  contenedor.innerHTML = '<p class="text-muted" style="padding: 1rem; text-align: center">Cargando publicaciones...</p>';
+
+  try {
+    const posts = await obtenerPosts();
+    const lista = Array.isArray(posts) ? posts : [];
+
+    contenedor.innerHTML = '';
+
+    if (lista.length === 0) {
+      contenedor.innerHTML = '<p class="text-muted" style="padding: 1rem; text-align: center">No hay publicaciones en la galería.</p>';
+      return;
+    }
+
+    lista.forEach((post) => {
+      const card = document.createElement('div');
+      card.className = 'card user-card-full';
+
+      const imagenSrc = (post.urlPictures && post.urlPictures[0]) ||
+        'https://raw.githubusercontent.com/CamiloBermeo/devPortes/refs/heads/main/assets/img/torneodefutbol.jpg';
+
+      const numFotos = post.urlPictures ? post.urlPictures.length : 0;
+      const badgeFotos = numFotos > 1
+        ? `<span class="badge-tag green" style="margin-left: 6px">${numFotos} fotos</span>`
+        : '';
+
+      card.innerHTML = `
+        <div class="user-card-header" style="display: flex; align-items: center; gap: 12px">
+          <img
+            src="${imagenSrc}"
+            alt="${post.name}"
+            style="width: 48px; height: 48px; object-fit: cover; border-radius: 8px; flex-shrink: 0" />
+          <div style="flex: 1; overflow: hidden">
+            <h4 style="font-size: 1rem; font-weight: 700; margin: 0; text-overflow: ellipsis; white-space: nowrap; overflow: hidden">
+              ${post.name}
+            </h4>
+            <span class="text-muted" style="font-size: 0.8rem">${formatearFechaAdmin(post.eventDate)}${badgeFotos}</span>
+          </div>
+        </div>
+
+        <div class="user-card-body" style="margin: 12px 0">
+          <div class="card-info-row">
+            <span class="text-muted">Fotos:</span>
+            <strong>${numFotos} imagen${numFotos !== 1 ? 'es' : ''}</strong>
+          </div>
+          <div style="margin-top: 6px">
+            <span class="text-muted" style="font-size: 0.8rem">Descripción:</span>
+            <p style="font-size: 0.88rem; margin: 2px 0 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden">${post.description || 'Sin descripción'}</p>
+          </div>
+        </div>
+
+        <div class="user-card-actions">
+          <button class="btn-action btn-detail" onclick="abrirVerPostAdmin(${post.id})"><i data-lucide="eye"></i> Ver</button>
+          <button class="btn-action btn-edit" onclick="abrirEditarPostAdmin(${post.id})"><i data-lucide="edit-3"></i> Editar</button>
+          <button class="btn-action btn-delete" onclick="eliminarPostConfirmadoAdmin(${post.id})"><i data-lucide="trash-2"></i> Eliminar</button>
+        </div>
+      `;
+
+      contenedor.appendChild(card);
+    });
+
+    if (window.lucide) lucide.createIcons();
+  } catch (error) {
+    contenedor.innerHTML = `<p class="text-muted" style="padding: 1rem; text-align: center">Error al cargar galería: ${error.message}</p>`;
+  }
+}
+
+window.abrirModalCrearPost = function () {
+  const modal = document.getElementById('infoModal');
+  const modalTitle = document.getElementById('modalTitle');
+  const modalBody = document.getElementById('modalBody');
+  const defaultImg = 'https://raw.githubusercontent.com/CamiloBermeo/devPortes/refs/heads/main/assets/img/torneodefutbol.jpg';
+
+  modalTitle.textContent = 'Crear Nueva Publicación';
+  modalBody.innerHTML = `
+    <form id="formCrearPostModal" class="form-modal-layout">
+      <div style="text-align: center; margin-bottom: 12px">
+        <div id="crearPostPreviewGrid" class="preview-grid-admin" style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: center">
+          <img id="crearPostPreviewImg" src="${defaultImg}" alt="Vista previa"
+            style="width: 100%; max-height: 160px; object-fit: cover; border-radius: 8px; border: 1px solid #e2e8f0" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Fotos del evento:</label>
+        <input type="file" id="crearPostFiles" class="form-input" accept="image/*" multiple />
+        <div style="font-size: 0.8rem; color: #64748b; margin-top: 4px">Puedes seleccionar una o varias imágenes.</div>
+      </div>
+      <div id="crearPostPreviewsContainer" style="display: flex; gap: 8px; flex-wrap: wrap"></div>
+      <div class="form-group">
+        <label>Título del evento:</label>
+        <input type="text" id="crearPostNombre" class="form-input" placeholder="Ej: Torneo Relámpago de Verano" required />
+      </div>
+      <div class="form-group">
+        <label>Fecha del evento:</label>
+        <input type="date" id="crearPostFecha" class="form-input" required />
+      </div>
+      <div class="form-group">
+        <label>Descripción:</label>
+        <textarea id="crearPostDescripcion" class="form-input" rows="3" placeholder="Describe qué ocurrió en el evento..." required></textarea>
+      </div>
+      <div class="modal-form-actions">
+        <button type="button" class="btn-secondary" onclick="cerrarModal()">Cancelar</button>
+        <button type="submit" class="btn-primary-modal">Crear Publicación</button>
+      </div>
+    </form>
+  `;
+
+  modal.classList.add('open');
+
+  document.getElementById('crearPostFecha').value = new Date().toISOString().split('T')[0];
+
+  const filesInput = document.getElementById('crearPostFiles');
+  const previewImg = document.getElementById('crearPostPreviewImg');
+  const previewsContainer = document.getElementById('crearPostPreviewsContainer');
+
+  filesInput.addEventListener('change', () => {
+    previewsContainer.innerHTML = '';
+    const files = Array.from(filesInput.files || []);
+    if (files.length > 0) {
+      previewImg.style.display = 'none';
+      files.forEach((file) => {
+        const url = URL.createObjectURL(file);
+        const thumb = document.createElement('img');
+        thumb.src = url;
+        thumb.style.cssText = 'width: 60px; height: 60px; object-fit: cover; border-radius: 6px; border: 1px solid #e2e8f0';
+        previewsContainer.appendChild(thumb);
+      });
+    } else {
+      previewImg.style.display = '';
+    }
+  });
+
+  document.getElementById('formCrearPostModal').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const nombre = document.getElementById('crearPostNombre').value.trim();
+    const fecha = document.getElementById('crearPostFecha').value;
+    const descripcion = document.getElementById('crearPostDescripcion').value.trim();
+    const files = Array.from(filesInput.files || []);
+
+    if (!nombre || !fecha || !descripcion) {
+      showToast('Completa todos los campos requeridos.', 'advertencia');
+      return;
+    }
+
+    if (files.length === 0) {
+      showToast('Debes adjuntar al menos una foto.', 'advertencia');
+      return;
+    }
+
+    try {
+      await crearPost({ name: nombre, description: descripcion, eventDate: fecha }, files);
+      cerrarModal();
+      await conScrollPreservado(() => renderGaleriaGrid());
+      showToast('Publicación creada con éxito.', 'exito');
+    } catch (error) {
+      showToast('Error al crear publicación: ' + error.message, 'error');
+    }
+  });
+};
+
+window.abrirVerPostAdmin = async function (id) {
+  try {
+    const posts = await obtenerPosts();
+    const lista = Array.isArray(posts) ? posts : [];
+    const post = lista.find((p) => Number(p.id) === Number(id));
+    if (!post) return;
+
+    const modal = document.getElementById('infoModal');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalBody = document.getElementById('modalBody');
+
+    const fotos = (post.urlPictures && post.urlPictures.length > 0)
+      ? post.urlPictures
+      : ['https://raw.githubusercontent.com/CamiloBermeo/devPortes/refs/heads/main/assets/img/torneodefutbol.jpg'];
+
+    const slidesHtml = fotos.map((url, idx) =>
+      `<div style="text-align: center; margin-bottom: 8px">
+        <img src="${url}" alt="${post.name} - Foto ${idx + 1}"
+          style="width: 100%; max-height: 280px; object-fit: contain; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8f9fa" />
+      </div>`
+    ).join('');
+
+    modalTitle.textContent = 'Detalle de Publicación';
+    modalBody.innerHTML = `
+      <div>${slidesHtml}</div>
+      <div class="cliente-info-box" style="margin-top: 1rem">
+        <p class="cliente-info-item"><strong>Título:</strong> ${post.name}</p>
+        <p class="cliente-info-item"><strong>Fecha:</strong> ${formatearFechaLargaAdmin(post.eventDate)}</p>
+        <p class="cliente-info-item"><strong>Fotos:</strong> ${fotos.length} imagen${fotos.length !== 1 ? 'es' : ''}</p>
+        <p class="cliente-info-item"><strong>Descripción:</strong> ${post.description || 'Sin descripción'}</p>
+      </div>
+    `;
+
+    modal.classList.add('open');
+  } catch (error) {
+    showToast('Error al cargar publicación: ' + error.message, 'error');
+  }
+};
+
+window.abrirEditarPostAdmin = async function (id) {
+  try {
+    const posts = await obtenerPosts();
+    const lista = Array.isArray(posts) ? posts : [];
+    const post = lista.find((p) => Number(p.id) === Number(id));
+    if (!post) return;
+
+    const modal = document.getElementById('infoModal');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalBody = document.getElementById('modalBody');
+
+    const fotosExistentes = Array.isArray(post.urlPictures) ? [...post.urlPictures] : [];
+    const primerFoto = fotosExistentes[0] || 'https://raw.githubusercontent.com/CamiloBermeo/devPortes/refs/heads/main/assets/img/torneodefutbol.jpg';
+
+    modalTitle.textContent = 'Editar Publicación';
+    modalBody.innerHTML = `
+      <form id="formEditarPostModal" class="form-modal-layout">
+        <div style="text-align: center; margin-bottom: 12px">
+          <img id="editPostPreviewImg" src="${primerFoto}" alt="Vista previa"
+            style="width: 100%; max-height: 160px; object-fit: cover; border-radius: 8px; border: 1px solid #e2e8f0" />
+        </div>
+        <div class="form-group">
+          <label>Fotos existentes:</label>
+          <div id="editPostExistingPreview" style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px">
+            ${fotosExistentes.map((url, idx) => `
+              <div style="position: relative; display: inline-block">
+                <img src="${url}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 6px; border: 1px solid #e2e8f0" />
+                <button type="button" class="edit-post-remove-btn" data-idx="${idx}"
+                  style="position: absolute; top: -4px; right: -4px; width: 18px; height: 18px; border-radius: 50%; background: #ef4444; color: #fff; border: none; font-size: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center">×</button>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Agregar nuevas fotos:</label>
+          <input type="file" id="editPostFiles" class="form-input" accept="image/*" multiple />
+        </div>
+        <div id="editPostNewPreviews" style="display: flex; gap: 8px; flex-wrap: wrap"></div>
+        <div class="form-group">
+          <label>Título del evento:</label>
+          <input type="text" id="editPostNombre" class="form-input" value="${post.name}" required />
+        </div>
+        <div class="form-group">
+          <label>Fecha del evento:</label>
+          <input type="date" id="editPostFecha" class="form-input" value="${post.eventDate || ''}" required />
+        </div>
+        <div class="form-group">
+          <label>Descripción:</label>
+          <textarea id="editPostDescripcion" class="form-input" rows="3" required>${post.description || ''}</textarea>
+        </div>
+        <div class="modal-form-actions">
+          <button type="button" class="btn-secondary" onclick="cerrarModal()">Cancelar</button>
+          <button type="submit" class="btn-primary-modal">Guardar Cambios</button>
+        </div>
+      </form>
+    `;
+
+    modal.classList.add('open');
+
+    let urlsActuales = [...fotosExistentes];
+
+    modalBody.querySelectorAll('.edit-post-remove-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const idx = parseInt(btn.getAttribute('data-idx'), 10);
+        urlsActuales.splice(idx, 1);
+        const container = document.getElementById('editPostExistingPreview');
+        if (container && container.children[idx]) {
+          container.children[idx].remove();
+        }
+        const previewImg = document.getElementById('editPostPreviewImg');
+        if (previewImg && urlsActuales.length > 0) {
+          previewImg.src = urlsActuales[0];
+        } else if (previewImg) {
+          previewImg.src = 'https://raw.githubusercontent.com/CamiloBermeo/devPortes/refs/heads/main/assets/img/torneodefutbol.jpg';
+        }
+      });
+    });
+
+    const filesInput = document.getElementById('editPostFiles');
+    const newPreviews = document.getElementById('editPostNewPreviews');
+    filesInput.addEventListener('change', () => {
+      newPreviews.innerHTML = '';
+      Array.from(filesInput.files || []).forEach((file) => {
+        const url = URL.createObjectURL(file);
+        const thumb = document.createElement('img');
+        thumb.src = url;
+        thumb.style.cssText = 'width: 60px; height: 60px; object-fit: cover; border-radius: 6px; border: 1px solid #e2e8f0';
+        newPreviews.appendChild(thumb);
+      });
+    });
+
+    document.getElementById('formEditarPostModal').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const nombre = document.getElementById('editPostNombre').value.trim();
+      const fecha = document.getElementById('editPostFecha').value;
+      const descripcion = document.getElementById('editPostDescripcion').value.trim();
+      const newFiles = Array.from(filesInput.files || []);
+
+      if (!nombre || !fecha || !descripcion) {
+        showToast('Completa todos los campos requeridos.', 'advertencia');
+        return;
+      }
+
+      if (urlsActuales.length === 0 && newFiles.length === 0) {
+        showToast('Debes tener al menos una foto en la publicación.', 'advertencia');
+        return;
+      }
+
+      try {
+        await editarPost(id, { name: nombre, description: descripcion, eventDate: fecha }, urlsActuales, newFiles);
+        cerrarModal();
+        await conScrollPreservado(() => renderGaleriaGrid());
+        showToast('Publicación actualizada correctamente.', 'exito');
+      } catch (error) {
+        showToast('Error al editar publicación: ' + error.message, 'error');
+      }
+    });
+  } catch (error) {
+    showToast('Error al cargar publicación: ' + error.message, 'error');
+  }
+};
+
+window.eliminarPostConfirmadoAdmin = function (id) {
+  abrirModalConfirmacion('¿Estás seguro de que deseas eliminar esta publicación? Esta acción no se puede deshacer.', async () => {
+    try {
+      await eliminarPost(id);
+      await conScrollPreservado(() => renderGaleriaGrid());
+      showToast('Publicación eliminada correctamente.', 'exito');
+    } catch (error) {
+      showToast('Error al eliminar publicación: ' + error.message, 'error');
+    }
+  });
+};
+
 async function renderSedesGrid() {
   const contenedor = document.getElementById('sedesGridPreview');
   if (!contenedor) return;
@@ -848,98 +1222,25 @@ window.abrirPerfilCliente = function (id) {
   const modalTitle = document.getElementById('modalTitle');
   const modalBody = document.getElementById('modalBody');
 
+  const iniciales = inicialesDe(cliente.nombre);
+
   modalTitle.textContent = 'Ficha Tecnica del Cliente';
   modalBody.innerHTML = `
     <div class="cliente-detalle-header" style="display: flex; align-items: center; gap: 12px">
-      <div class="avatar" style="width: 48px; height: 48px; font-size: 1.1rem">${cliente.iniciales}</div>
+      <div class="avatar" style="width: 48px; height: 48px; font-size: 1.1rem">${iniciales}</div>
       <div>
-        <h3 style="font-size: 1.1rem; margin: 0">${cliente.nombre}</h3>
-        <span class="badge-tag green">${cliente.tipo}</span>
+        <h3 style="font-size: 1.1rem; margin: 0">${escapeHtml(cliente.nombre)}</h3>
+        <span class="badge-tag green">${escapeHtml(cliente.tipo)}</span>
       </div>
     </div>
 
     <div class="cliente-info-box" style="margin-top: 1rem">
-      <p class="cliente-info-item"><strong>Correo electronico:</strong> ${cliente.email}</p>
-      <p class="cliente-info-item"><strong>Numero de contacto:</strong> ${cliente.telefono}</p>
-      <p class="cliente-info-item"><strong>Historial de uso:</strong> ${cliente.reservas} reservas en la sede.</p>
+      <p class="cliente-info-item"><strong>Correo electronico:</strong> ${escapeHtml(cliente.email)}</p>
+      <p class="cliente-info-item"><strong>Numero de contacto:</strong> ${escapeHtml(cliente.telefono || '-')}</p>
     </div>
   `;
 
   modal.classList.add('open');
-};
-
-window.editarCliente = function (id) {
-  const cliente = listaClientes.find((c) => c.id === id);
-  if (!cliente) return;
-
-  const modal = document.getElementById('infoModal');
-  const modalTitle = document.getElementById('modalTitle');
-  const modalBody = document.getElementById('modalBody');
-
-  modalTitle.textContent = 'Editar Cliente';
-  modalBody.innerHTML = `
-    <form id="formEditarClienteModal" class="form-modal-layout">
-      <div class="form-group">
-        <label>Nombre Completo:</label>
-        <input type="text" id="editClienteNombre" class="form-input" value="${cliente.nombre}" required />
-      </div>
-      <div class="form-group">
-        <label>Telefono:</label>
-        <input type="text" id="editClienteTelefono" class="form-input" value="${cliente.telefono}" required />
-      </div>
-      <div class="form-group">
-        <label>Correo Electronico:</label>
-        <input type="email" id="editClienteEmail" class="form-input" value="${cliente.email}" required />
-      </div>
-      <div class="form-group">
-        <label>Tipo de Cliente:</label>
-        <select id="editClienteTipo" class="form-input">
-          <option value="Estandar" ${cliente.tipo === 'Estandar' ? 'selected' : ''}>Estandar</option>
-          <option value="Frecuente" ${cliente.tipo === 'Frecuente' ? 'selected' : ''}>Frecuente</option>
-          <option value="VIP" ${cliente.tipo === 'VIP' ? 'selected' : ''}>VIP</option>
-        </select>
-      </div>
-      <div class="modal-form-actions">
-        <button type="button" class="btn-secondary" onclick="cerrarModal()">Cancelar</button>
-        <button type="submit" class="btn-primary-modal">Guardar Cambios</button>
-      </div>
-    </form>
-  `;
-
-  modal.classList.add('open');
-
-  document.getElementById('formEditarClienteModal').addEventListener('submit', (e) => {
-    e.preventDefault();
-    cliente.nombre = document.getElementById('editClienteNombre').value.trim();
-    cliente.telefono = document.getElementById('editClienteTelefono').value.trim();
-    cliente.email = document.getElementById('editClienteEmail').value.trim();
-    cliente.tipo = document.getElementById('editClienteTipo').value;
-
-    const partes = cliente.nombre.split(' ');
-    cliente.iniciales = partes
-      .map((p) => p[0])
-      .join('')
-      .substring(0, 2)
-      .toUpperCase();
-
-    renderClientesGrid();
-    cerrarModal();
-  });
-};
-
-window.eliminarCliente = function (id) {
-  const cliente = listaClientes.find((c) => c.id === id);
-  if (!cliente) return;
-
-  abrirModalConfirmacion(`Estas seguro de que deseas eliminar a <strong>${cliente.nombre}</strong>?`, () => {
-    listaClientes = listaClientes.filter((c) => c.id !== id);
-    renderClientesGrid();
-
-    const modalBody = document.getElementById('modalBody');
-    if (document.getElementById('infoModal').classList.contains('open') && document.querySelector('.tabla-modal-clientes')) {
-      renderTablaClientesModal(modalBody);
-    }
-  });
 };
 
 window.cerrarModal = function () {
@@ -990,6 +1291,8 @@ function activarModalGeneral() {
         abrirModalCrearCancha();
       } else if (clave === 'crear-sede') {
         abrirModalCrearSede();
+      } else if (clave === 'crear-post') {
+        abrirModalCrearPost();
       } else {
         const info = datosGeneralesModales[clave];
         if (info) {
@@ -1013,34 +1316,26 @@ function renderTablaClientesModal(contenedor) {
   if (!contenedor) return;
 
   let html = `
-    <p class="text-muted modal-subtext">Directorio general. Selecciona una accion para administrar el cliente:</p>
+    <p class="text-muted modal-subtext">Directorio general de clientes registrados:</p>
     <div class="tabla-modal-wrapper">
       <table class="tabla-modal tabla-modal-clientes">
         <thead>
           <tr>
             <th>Cliente</th>
             <th>Contacto</th>
-            <th>Reservas</th>
-            <th class="td-acciones">Acciones</th>
+            <th>Clasificacion</th>
           </tr>
         </thead>
         <tbody>
   `;
 
   listaClientes.forEach((c) => {
+    const iniciales = inicialesDe(c.nombre);
     html += `
       <tr>
-        <td><strong>${c.nombre}</strong> <br><span class="badge-tag green">${c.tipo}</span></td>
-        <td><span class="text-muted">${c.telefono}</span><br><span class="text-muted">${c.email}</span></td>
-        <td>${c.reservas}</td>
-        <td class="td-acciones">
-          <button class="btn-action btn-edit" onclick="editarCliente(${c.id})">
-            <i data-lucide="edit-3"></i> Editar
-          </button>
-          <button class="btn-action btn-delete" onclick="eliminarCliente(${c.id})">
-            <i data-lucide="trash-2"></i> Eliminar
-          </button>
-        </td>
+        <td><strong>${escapeHtml(c.nombre)}</strong> <br><span class="badge-tag green">${escapeHtml(c.tipo)}</span></td>
+        <td><span class="text-muted">${escapeHtml(c.email)}</span><br><span class="text-muted">${escapeHtml(c.telefono || '-')}</span></td>
+        <td>${escapeHtml(c.tipo)}</td>
       </tr>
     `;
   });

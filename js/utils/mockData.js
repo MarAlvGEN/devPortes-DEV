@@ -187,3 +187,76 @@ export function obtenerCanchasMock() {
 export function guardarCanchasMock(canchas) {
   localStorage.setItem(CANCHAS_KEY, JSON.stringify(canchas));
 }
+
+const POSTS_KEY = 'galeria_posts_data';
+
+export const postsIniciales = [
+  {
+    id: 1,
+    name: 'Torneo tapitas',
+    description: 'Torneo realizado el 2025 de abril a las 18:00 horas donde el campeon fue el equipo "Los Campeones"',
+    urlPictures: [
+      'https://raw.githubusercontent.com/CamiloBermeo/devPortes/refs/heads/main/assets/img/torneodefutbol.jpg',
+    ],
+    eventDate: '2025-04-20',
+  },
+  {
+    id: 2,
+    name: 'Eliminaciones FutbolClub',
+    description: 'En las eliminaciones del FutbolClub se enfrentaron los mejores equipos de la nacion.',
+    urlPictures: [
+      'https://raw.githubusercontent.com/CamiloBermeo/devPortes/refs/heads/main/assets/img/eliminacionesfutbolclub.jpg',
+    ],
+    eventDate: '2025-05-12',
+  },
+  {
+    id: 3,
+    name: 'Torneo de tenis 2026',
+    description: 'El torneo de tenis 2026 se reunieron los mejores jugadores del país y solo un jugador logró la victoria y fue del país de Estados Unidos.',
+    urlPictures: [
+      'https://raw.githubusercontent.com/CamiloBermeo/devPortes/refs/heads/main/assets/img/torneotenis.jpg',
+    ],
+    eventDate: '2026-03-10',
+  },
+  {
+    id: 4,
+    name: 'Torneo de pádel 2024',
+    description: 'Torneo de pádel compitiendo por el primer lugar entre muchos participantes.',
+    urlPictures: [
+      'https://raw.githubusercontent.com/CamiloBermeo/devPortes/refs/heads/main/assets/img/padeljugando.jpg',
+    ],
+    eventDate: '2024-11-18',
+  },
+  {
+    id: 5,
+    name: 'Zona de Entrenamiento',
+    description: 'Prepárate y mejora tus habilidades en nuestras modernas instalaciones.',
+    urlPictures: [
+      'https://raw.githubusercontent.com/CamiloBermeo/devPortes/refs/heads/main/assets/img/entrenandoengym.jpg',
+    ],
+    eventDate: '2026-01-15',
+  },
+  {
+    id: 6,
+    name: 'Torneo de Baloncesto',
+    description: 'En este torneo los mejores deportistas y estrellas del país compitieron en un entorno de alto nivel para ganar su primer lugar y título a nivel nacional.',
+    urlPictures: [
+      'https://raw.githubusercontent.com/CamiloBermeo/devPortes/refs/heads/main/assets/img/torneodebaloncesto.jpg',
+    ],
+    eventDate: '2026-04-15',
+  },
+];
+
+export function obtenerPostsMock() {
+  const data = localStorage.getItem(POSTS_KEY);
+  if (!data) {
+    localStorage.setItem(POSTS_KEY, JSON.stringify(postsIniciales));
+    return postsIniciales;
+  }
+  return JSON.parse(data);
+}
+
+export function guardarPostsMock(posts) {
+  localStorage.setItem(POSTS_KEY, JSON.stringify(posts));
+}
+

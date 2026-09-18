@@ -11,3 +11,7 @@ export async function iniciarSesion({ email, password }) {
 export async function obtenerPerfil(token) {
   return apiGet('/auth/profile', { auth: true });
 }
+
+export async function obtenerUsuarios() {
+  return apiGet('/auth/users', { auth: true });
+}

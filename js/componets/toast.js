@@ -1,3 +1,9 @@
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.appendChild(document.createTextNode(text));
+  return div.innerHTML;
+}
+
 function initToastContainer() {
   let container = document.querySelector('.dp-toast-container');
   if (!container) {
@@ -24,7 +30,7 @@ export function showToast(mensaje, tipo = 'info', duracion = 3500) {
 
   toast.innerHTML = `
     <i class="bi ${iconos[tipo] || iconos.info}"></i>
-    <span>${mensaje}</span>
+    <span>${escapeHtml(mensaje)}</span>
   `;
 
   container.appendChild(toast);

@@ -27,6 +27,7 @@ export function getHeaders({ auth = false, multipart = false } = {}) {
 function limpiarSesion() {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(SESSION_KEY);
+  localStorage.removeItem('devportes_admin_sesion');
   document.dispatchEvent(new CustomEvent('session-change'));
 }
 
@@ -98,4 +99,16 @@ export async function apiMultipart(endpoint, formData, { auth = false, method = 
   return handleResponse(response, { auth });
 }
 
+export async function apiDelete(endpoint, { auth = false } = {}) {
+  const response = await fetch(`${API_URL}${endpoint}`, {
+    method: 'DELETE',
+    headers: getHeaders({ auth }),
+  });
+  if (response.status === 204) {
+    return null;
+  }
+  return handleResponse(response, { auth });
+}
+
 export { API_URL };
+
