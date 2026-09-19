@@ -35,6 +35,13 @@ function mapearEstadoFrontend(estadoFrontend) {
   return estadoFrontend === 'Disponible' ? 'DISPONIBLE' : 'MANTENIMIENTO';
 }
 
+function setFormBtnLoading(form, loading) {
+  const btn = form.querySelector('[type="submit"]');
+  if (!btn) return;
+  btn.classList.toggle('loading', loading);
+  btn.disabled = loading;
+}
+
 function obtenerNombreUbicacion(id) {
   const u = ubicaciones.find((loc) => loc.id === id);
   return u ? u.name : `Sede #${id}`;
@@ -391,7 +398,7 @@ window.abrirModalCrearCancha = function () {
       </div>
       <div class="modal-form-actions">
         <button type="button" class="btn-secondary" onclick="cerrarModal()">Cancelar</button>
-        <button type="submit" class="btn-primary-modal">Crear Cancha</button>
+        <button type="submit" class="btn-primary-modal"><span class="btn-label">Crear Cancha</span><span class="btn-spinner"><i class="bi bi-arrow-repeat"></i> Guardando...</span></button>
       </div>
     </form>
   `;
@@ -440,10 +447,12 @@ window.abrirModalCrearCancha = function () {
     };
 
     try {
+      setFormBtnLoading(e.target, true);
       await crearCancha(dataCancha, imagenFile ? [imagenFile] : []);
       cerrarModal();
       await conScrollPreservado(() => renderCanchasGrid());
     } catch (error) {
+      setFormBtnLoading(e.target, false);
       showToast('Error al crear cancha: ' + error.message, 'error');
     }
   });
@@ -562,7 +571,7 @@ window.abrirEditarCancha = async function (id) {
         </div>
         <div class="modal-form-actions">
           <button type="button" class="btn-secondary" onclick="cerrarModal()">Cancelar</button>
-          <button type="submit" class="btn-primary-modal">Guardar Cambios</button>
+          <button type="submit" class="btn-primary-modal"><span class="btn-label">Guardar Cambios</span><span class="btn-spinner"><i class="bi bi-arrow-repeat"></i> Guardando...</span></button>
         </div>
       </form>
     `;
@@ -594,6 +603,7 @@ window.abrirEditarCancha = async function (id) {
       };
 
       try {
+        setFormBtnLoading(e.target, true);
         const editImagenFile = document.getElementById('editImagenFile').files[0];
         const editImagenUrl = document.getElementById('editImagenUrl').value;
         if (editImagenFile) {
@@ -604,6 +614,7 @@ window.abrirEditarCancha = async function (id) {
         cerrarModal();
         await conScrollPreservado(() => renderCanchasGrid());
       } catch (error) {
+        setFormBtnLoading(e.target, false);
         showToast('Error al editar cancha: ' + error.message, 'error');
       }
     });
@@ -756,7 +767,7 @@ window.abrirModalCrearPost = function () {
       </div>
       <div class="modal-form-actions">
         <button type="button" class="btn-secondary" onclick="cerrarModal()">Cancelar</button>
-        <button type="submit" class="btn-primary-modal">Crear Publicación</button>
+        <button type="submit" class="btn-primary-modal"><span class="btn-label">Crear Publicación</span><span class="btn-spinner"><i class="bi bi-arrow-repeat"></i> Guardando...</span></button>
       </div>
     </form>
   `;
@@ -769,21 +780,40 @@ window.abrirModalCrearPost = function () {
   const previewImg = document.getElementById('crearPostPreviewImg');
   const previewsContainer = document.getElementById('crearPostPreviewsContainer');
 
-  filesInput.addEventListener('change', () => {
+  let crearPostSelectedFiles = [];
+
+  function renderCrearPostPreviews() {
     previewsContainer.innerHTML = '';
-    const files = Array.from(filesInput.files || []);
-    if (files.length > 0) {
+    if (crearPostSelectedFiles.length > 0) {
       previewImg.style.display = 'none';
-      files.forEach((file) => {
+      crearPostSelectedFiles.forEach((file, idx) => {
         const url = URL.createObjectURL(file);
+        const wrapper = document.createElement('div');
+        wrapper.className = 'photo-thumb-wrapper';
         const thumb = document.createElement('img');
         thumb.src = url;
         thumb.style.cssText = 'width: 60px; height: 60px; object-fit: cover; border-radius: 6px; border: 1px solid #e2e8f0';
-        previewsContainer.appendChild(thumb);
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.className = 'edit-post-remove-btn';
+        removeBtn.textContent = '×';
+        removeBtn.addEventListener('click', () => {
+          URL.revokeObjectURL(url);
+          crearPostSelectedFiles.splice(idx, 1);
+          renderCrearPostPreviews();
+        });
+        wrapper.appendChild(thumb);
+        wrapper.appendChild(removeBtn);
+        previewsContainer.appendChild(wrapper);
       });
     } else {
       previewImg.style.display = '';
     }
+  }
+
+  filesInput.addEventListener('change', () => {
+    crearPostSelectedFiles = Array.from(filesInput.files || []);
+    renderCrearPostPreviews();
   });
 
   document.getElementById('formCrearPostModal').addEventListener('submit', async (e) => {
@@ -792,7 +822,7 @@ window.abrirModalCrearPost = function () {
     const nombre = document.getElementById('crearPostNombre').value.trim();
     const fecha = document.getElementById('crearPostFecha').value;
     const descripcion = document.getElementById('crearPostDescripcion').value.trim();
-    const files = Array.from(filesInput.files || []);
+    const files = crearPostSelectedFiles;
 
     if (!nombre || !fecha || !descripcion) {
       showToast('Completa todos los campos requeridos.', 'advertencia');
@@ -805,11 +835,13 @@ window.abrirModalCrearPost = function () {
     }
 
     try {
+      setFormBtnLoading(e.target, true);
       await crearPost({ name: nombre, description: descripcion, eventDate: fecha }, files);
       cerrarModal();
       await conScrollPreservado(() => renderGaleriaGrid());
       showToast('Publicación creada con éxito.', 'exito');
     } catch (error) {
+      setFormBtnLoading(e.target, false);
       showToast('Error al crear publicación: ' + error.message, 'error');
     }
   });
@@ -906,7 +938,7 @@ window.abrirEditarPostAdmin = async function (id) {
         </div>
         <div class="modal-form-actions">
           <button type="button" class="btn-secondary" onclick="cerrarModal()">Cancelar</button>
-          <button type="submit" class="btn-primary-modal">Guardar Cambios</button>
+          <button type="submit" class="btn-primary-modal"><span class="btn-label">Guardar Cambios</span><span class="btn-spinner"><i class="bi bi-arrow-repeat"></i> Guardando...</span></button>
         </div>
       </form>
     `;
@@ -934,15 +966,36 @@ window.abrirEditarPostAdmin = async function (id) {
 
     const filesInput = document.getElementById('editPostFiles');
     const newPreviews = document.getElementById('editPostNewPreviews');
-    filesInput.addEventListener('change', () => {
+
+    let editPostNewFiles = [];
+
+    function renderEditPostNewPreviews() {
       newPreviews.innerHTML = '';
-      Array.from(filesInput.files || []).forEach((file) => {
+      editPostNewFiles.forEach((file, idx) => {
         const url = URL.createObjectURL(file);
+        const wrapper = document.createElement('div');
+        wrapper.className = 'photo-thumb-wrapper';
         const thumb = document.createElement('img');
         thumb.src = url;
         thumb.style.cssText = 'width: 60px; height: 60px; object-fit: cover; border-radius: 6px; border: 1px solid #e2e8f0';
-        newPreviews.appendChild(thumb);
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.className = 'edit-post-remove-btn';
+        removeBtn.textContent = '×';
+        removeBtn.addEventListener('click', () => {
+          URL.revokeObjectURL(url);
+          editPostNewFiles.splice(idx, 1);
+          renderEditPostNewPreviews();
+        });
+        wrapper.appendChild(thumb);
+        wrapper.appendChild(removeBtn);
+        newPreviews.appendChild(wrapper);
       });
+    }
+
+    filesInput.addEventListener('change', () => {
+      editPostNewFiles = Array.from(filesInput.files || []);
+      renderEditPostNewPreviews();
     });
 
     document.getElementById('formEditarPostModal').addEventListener('submit', async (e) => {
@@ -951,7 +1004,7 @@ window.abrirEditarPostAdmin = async function (id) {
       const nombre = document.getElementById('editPostNombre').value.trim();
       const fecha = document.getElementById('editPostFecha').value;
       const descripcion = document.getElementById('editPostDescripcion').value.trim();
-      const newFiles = Array.from(filesInput.files || []);
+      const newFiles = editPostNewFiles;
 
       if (!nombre || !fecha || !descripcion) {
         showToast('Completa todos los campos requeridos.', 'advertencia');
@@ -964,11 +1017,13 @@ window.abrirEditarPostAdmin = async function (id) {
       }
 
       try {
+        setFormBtnLoading(e.target, true);
         await editarPost(id, { name: nombre, description: descripcion, eventDate: fecha }, urlsActuales, newFiles);
         cerrarModal();
         await conScrollPreservado(() => renderGaleriaGrid());
         showToast('Publicación actualizada correctamente.', 'exito');
       } catch (error) {
+        setFormBtnLoading(e.target, false);
         showToast('Error al editar publicación: ' + error.message, 'error');
       }
     });
@@ -1076,7 +1131,7 @@ window.abrirModalCrearSede = function () {
       </div>
       <div class="modal-form-actions">
         <button type="button" class="btn-secondary" onclick="cerrarModal()">Cancelar</button>
-        <button type="submit" class="btn-primary-modal">Crear Sede</button>
+        <button type="submit" class="btn-primary-modal"><span class="btn-label">Crear Sede</span><span class="btn-spinner"><i class="bi bi-arrow-repeat"></i> Guardando...</span></button>
       </div>
     </form>
   `;
@@ -1095,10 +1150,12 @@ window.abrirModalCrearSede = function () {
     };
 
     try {
+      setFormBtnLoading(e.target, true);
       await crearUbicacion(data);
       cerrarModal();
       await conScrollPreservado(() => Promise.all([renderSedesGrid(), renderCanchasGrid()]));
     } catch (error) {
+      setFormBtnLoading(e.target, false);
       showToast('Error al crear sede: ' + error.message, 'error');
     }
   });
@@ -1172,7 +1229,7 @@ window.abrirEditarSede = function (id) {
       </div>
       <div class="modal-form-actions">
         <button type="button" class="btn-secondary" onclick="cerrarModal()">Cancelar</button>
-        <button type="submit" class="btn-primary-modal">Guardar Cambios</button>
+        <button type="submit" class="btn-primary-modal"><span class="btn-label">Guardar Cambios</span><span class="btn-spinner"><i class="bi bi-arrow-repeat"></i> Guardando...</span></button>
       </div>
     </form>
   `;
@@ -1191,10 +1248,12 @@ window.abrirEditarSede = function (id) {
     };
 
     try {
+      setFormBtnLoading(e.target, true);
       await editarUbicacionApi(id, data);
       cerrarModal();
       await conScrollPreservado(() => Promise.all([renderSedesGrid(), renderCanchasGrid()]));
     } catch (error) {
+      setFormBtnLoading(e.target, false);
       showToast('Error al editar sede: ' + error.message, 'error');
     }
   });
