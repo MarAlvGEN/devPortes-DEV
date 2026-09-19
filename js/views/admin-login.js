@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const emailInput = document.getElementById('adminEmail');
   const passwordInput = document.getElementById('adminPassword');
   const errorDiv = document.getElementById('adminLoginError');
+  const btnSubmit = document.getElementById('btnAdminLogin');
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -25,6 +26,8 @@ document.addEventListener('DOMContentLoaded', () => {
       showError('Completa todos los campos.');
       return;
     }
+
+    btnSubmit.classList.add('loading');
 
     try {
       const respuesta = await iniciarSesion({ email, password });
@@ -39,6 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
       localStorage.setItem(KEY_TOKEN, respuesta.token);
       window.location.href = 'panel-administrador.html';
     } catch (error) {
+      btnSubmit.classList.remove('loading');
       if (error.status === 401) {
         showError('Credenciales incorrectas. Verifica tu correo y contrasena.');
       } else {
