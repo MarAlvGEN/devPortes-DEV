@@ -175,21 +175,20 @@
 }
 
 .filtro-deporte-btn {
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
+  height: 44px;
+  border-radius: 50rem;
   border: 2px solid var(--color-terceario);
   background: #ffffff;
   color: var(--color-terceario);
-  font-size: 0.7rem;
+  font-size: 0.78rem;
   font-weight: 700;
-  text-align: center;
   cursor: pointer;
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  padding: 8px;
-  line-height: 1.2;
+  gap: 8px;
+  padding: 8px 20px;
+  white-space: nowrap;
+  line-height: 1;
   transition:
     background 0.25s ease,
     color 0.25s ease,
@@ -197,8 +196,13 @@
     box-shadow 0.25s ease;
 }
 
+.filtro-deporte-btn i {
+  font-size: 1rem;
+  line-height: 1;
+}
+
 .filtro-deporte-btn:hover {
-  transform: translateY(-3px);
+  transform: translateY(-2px);
   box-shadow: 0 6px 16px rgba(34, 67, 48, 0.2);
 }
 
@@ -394,9 +398,13 @@
 
 @media (max-width: 1199.98px) {
   .filtro-deporte-btn {
-    width: 70px;
-    height: 70px;
-    font-size: 0.65rem;
+    height: 40px;
+    font-size: 0.7rem;
+    padding: 6px 16px;
+  }
+
+  .filtro-deporte-btn i {
+    font-size: 0.9rem;
   }
 
   .gallery-bento-item {
@@ -415,23 +423,22 @@
 
 @media (max-width: 767.98px) {
   .filtro-deportes {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    justify-content: flex-start;
+    flex-wrap: wrap;
+    overflow-x: hidden;
+    justify-content: center;
     padding-bottom: 8px;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-  }
-
-  .filtro-deportes::-webkit-scrollbar {
-    display: none;
+    gap: 10px;
   }
 
   .filtro-deporte-btn {
-    width: 64px;
-    height: 64px;
-    font-size: 0.6rem;
+    height: 38px;
+    font-size: 0.65rem;
+    padding: 6px 14px;
     flex-shrink: 0;
+  }
+
+  .filtro-deporte-btn i {
+    font-size: 0.85rem;
   }
 
   .gallery-bento-grid {
@@ -520,6 +527,16 @@
 }
 
 @media (max-width: 575.98px) {
+  .filtro-deporte-btn {
+    height: 36px;
+    font-size: 0.6rem;
+    padding: 5px 12px;
+  }
+
+  .filtro-deporte-btn i {
+    font-size: 0.8rem;
+  }
+
   .gallery-bento-grid {
     gap: 10px;
   }
